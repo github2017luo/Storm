@@ -69,7 +69,7 @@ namespace Storm.Wpf.StreamServices
         {
             if (stream is null) { throw new ArgumentNullException(nameof(stream)); }
 
-
+            return null;
         }
     }
 }

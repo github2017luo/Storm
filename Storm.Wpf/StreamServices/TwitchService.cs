@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Storm.Wpf.Common;
 using Storm.Wpf.Streams;
@@ -40,6 +41,26 @@ namespace Storm.Wpf.StreamServices
         private const string clientIdHeaderName = "Client-ID";
         private const string clientIdHeaderValue = "ewvlchtxgqq88ru9gmfp1gmyt6h2b93";
 
+        private static readonly Uri graphQlEndpoint = new Uri("https://gql.twitch.tv/gql");
+
+        private static readonly IDictionary<string, string> headers = new Dictionary<string, string>
+        {
+            { "Host", "gql.twitch.tv" },
+            { "User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/74.0" },
+            { "Accept", "*/*" },
+            { "Accept-Language", "en-GB" },
+            { "Accept-Encoding", "gzip, deflate, br" },
+            // { "Referer", "https://www.twitch.tv/fuslie" },
+            { "Client-Id", "kimne78kx3ncx6brgo4mv6wki5h1ko" }, // this has yet to fail
+            // { "X-Device-Id", "75ac3df51d31f240" },
+            { "Origin", "https://www.twitch.tv" },
+            { "DNT", "1" },
+            { "Connection", "keep-alive" },
+            { "Upgrade-Insecure-Requests", "1" },
+            { "Pragma", "no-cache" },
+            { "Cache-Control", "no-cache" }
+        };
+
         private static readonly ConcurrentDictionary<Int64, string> gameIdCache = new ConcurrentDictionary<Int64, string>();
 
         protected override Uri ApiRoot { get; } = new Uri("https://api.twitch.tv/helix");
@@ -54,19 +75,110 @@ namespace Storm.Wpf.StreamServices
 
         public override async Task UpdateAsync(IEnumerable<StreamBase> streams)
         {
-            if (streams is null) { throw new ArgumentNullException(nameof(streams)); }
-            if (!streams.Any()) { return; }
+            string requestBody = BuildRequestBody(streams);
 
-            var holder = CreateResultsHolder(streams.Select(s => s.AccountName));
+            Action<HttpRequestMessage> configureRequest = request =>
+            {
+                request.Method = HttpMethod.Post;
+                request.Content = new StringContent(requestBody, Encoding.UTF8, "text/plain");
 
-            await GetUserIdAndDisplayNameAsync(holder);
+                foreach (KeyValuePair<string, string> each in headers)
+                {
+                    request.Headers.Add(each.Key, each.Value);
+                }
+            };
 
-            await GetIsLiveAndGameIdAsync(holder);
+            (HttpStatusCode status, string text) = await Web.DownloadStringAsync(graphQlEndpoint, configureRequest);
 
-            await UpdateGameNameCache(holder);
+            if (status != HttpStatusCode.OK)
+            {
+                await Log.MessageAsync($"Twitch update failed: {status}");
 
-            SetValues(streams, holder);
+                return;
+            }
+
+            if (!Json.TryParse("{\"dummy\":" + text + "}", out JObject json))
+            {
+                await Log.MessageAsync("JSON parsing failed");
+
+                return;
+            }
+
+            try
+            {
+                foreach (StreamBase stream in streams)
+                {
+                    if (json["dummy"].Where(j => (string)j["data"]["user"]["login"] == stream.AccountName).SingleOrDefault() is JToken token)
+                    {
+                        await Log.MessageAsync(token.ToString());
+
+                        JToken user = token["data"]["user"];
+
+                        stream.DisplayName = (string)user["displayName"];
+                        bool isLive = user["stream"].HasValues ? (string)user["stream"]["type"] == "live" : false;
+                        
+                        if (isLive)
+                        {
+                            (stream as TwitchStream).Game = (string)user["stream"]["game"]["displayName"];
+                            stream.Viewers = (int)user["stream"]["viewersCount"];
+                        }
+
+                        stream.IsLive = isLive;
+                    }
+                    else
+                    {
+                        await Log.MessageAsync($"no JTokens by this name: {stream.AccountName}");
+                    }
+                }
+            }
+            catch (NullReferenceException ex)
+            {
+                await Log.ExceptionAsync(ex);
+            }
         }
+
+        private static string BuildRequestBody(IEnumerable<StreamBase> streams)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append("[");
+
+            foreach (StreamBase stream in streams)
+            {
+                string beginning = "{\"extensions\":{\"persistedQuery\":{\"sha256Hash\":\"ce18f2832d12cabcfee42f0c72001dfa1a5ed4a84931ead7b526245994810284\",\"version\":1}},\"operationName\":\"ChannelRoot_Channel\",\"variables\":{\"currentChannelLogin\":\"";
+                string ending = "\",\"includeChanlets\":false}},";
+
+                sb.Append(beginning);
+                sb.Append(stream.AccountName);
+                sb.Append(ending);
+            }
+
+            sb.Remove(sb.Length - 1, 1); // to remove the unwanted comma after the last entry
+
+            sb.Append("]");
+
+            return sb.ToString();
+        }
+
+
+
+
+
+        //public override async Task UpdateAsync(IEnumerable<StreamBase> streams)
+        //{
+        //    if (streams is null) { throw new ArgumentNullException(nameof(streams)); }
+        //    if (!streams.Any()) { return; }
+
+        //    var holder = CreateResultsHolder(streams.Select(s => s.AccountName));
+
+        //    await GetUserIdAndDisplayNameAsync(holder);
+
+        //    await GetIsLiveAndGameIdAsync(holder);
+
+        //    await UpdateGameNameCache(holder);
+
+        //    SetValues(streams, holder);
+        //}
 
         /// <summary>
         /// Creates a holder for the results from the Twitch API, that will get filled out by the UpdateAsync methods, then applied to the streams collection.

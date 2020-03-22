@@ -41,10 +41,7 @@ namespace Storm.Wpf.Common
                 {
                     status = response.StatusCode;
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    }
+                    text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 }
             }
             catch (HttpRequestException) { }

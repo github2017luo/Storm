@@ -74,6 +74,13 @@ namespace Storm.Wpf.Streams
             set => SetProperty(ref _autoRecord, value, nameof(AutoRecord));
         }
 
+        private int _viewers = 0;
+        public int Viewers
+        {
+            get => _viewers;
+            set => SetProperty(ref _viewers, value, nameof(Viewers));
+        }
+
         protected StreamBase(Uri accountLink)
         {
             AccountLink = accountLink ?? throw new ArgumentNullException(nameof(accountLink));

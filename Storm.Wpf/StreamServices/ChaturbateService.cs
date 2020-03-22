@@ -43,7 +43,7 @@ namespace Storm.Wpf.StreamServices
         {
             (HttpStatusCode status, string page) = await Web.DownloadStringAsync(uri).ConfigureAwait(false);
 
-            if (status != HttpStatusCode.OK) { Debug.WriteLine($"{uri.AbsoluteUri}: {status.ToString()}");  return false; }
+            if (status != HttpStatusCode.OK) { Debug.WriteLine($"{uri.AbsoluteUri}: {status}");  return false; }
             // if downloading the page fails we declare them offline no matter what
 
             using (StringReader sr = new StringReader(page))
