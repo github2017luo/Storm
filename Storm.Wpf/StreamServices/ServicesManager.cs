@@ -10,7 +10,7 @@ namespace Storm.Wpf.StreamServices
         private static readonly Collection<StreamServiceBase> services = new Collection<StreamServiceBase>
         {
             new TwitchService(),
-            new YouTubeService(),
+            //new YouTubeService(),
             new ChaturbateService(),
             new MixerService(),
             new MixlrService(),
@@ -19,32 +19,25 @@ namespace Storm.Wpf.StreamServices
 
         public static StreamServiceBase GetService(Type streamType)
         {
-            try
-            {
-                return services.SingleOrDefault(service => service.HandlesStreamType == streamType);
-            }
-            catch (ArgumentNullException ex)
-            {
-                throw new ServicesException(ex.Message, streamType);
-            }
+            return services.SingleOrDefault(s => s.HandlesStreamType == streamType);
         }
 
         public static Action StartWatching(StreamBase stream)
         {
             if (stream is null) { throw new ArgumentNullException(nameof(stream)); }
 
-            var service = GetService(stream.GetType());
+            var service = GetService(stream.GetType()) is StreamServiceBase s ? s : null;
 
-            return service.GetWatchingInstructions(stream);
+            return service?.GetWatchingInstructions(stream);
         }
 
         public static Action StartRecording(StreamBase stream)
         {
             if (stream is null) { throw new ArgumentNullException(nameof(stream)); }
 
-            var service = GetService(stream.GetType());
+            var service = GetService(stream.GetType()) is StreamServiceBase s ? s : null;
 
-            return service.GetRecordingInstructions(stream);
+            return service?.GetRecordingInstructions(stream);
         }
     }
 }

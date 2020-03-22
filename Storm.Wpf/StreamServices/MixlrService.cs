@@ -11,6 +11,9 @@ namespace Storm.Wpf.StreamServices
 {
     public class MixlrService : StreamServiceBase
     {
+
+// we CAN get a live stream for VLC - https://api.mixlr.com/users/jeff-gerstmann (when live) -> broadcast_ids[] -> listen1.mixlr.com/{broadcast_id}
+
         protected override Uri ApiRoot { get; } = new Uri("https://api.mixlr.com/users");
         public override Type HandlesStreamType { get; } = typeof(MixlrStream);
 
@@ -60,6 +63,13 @@ namespace Storm.Wpf.StreamServices
             }
 
             return failure;
+        }
+
+        public override Action GetWatchingInstructions(StreamBase stream)
+        {
+            if (stream is null) { throw new ArgumentNullException(nameof(stream)); }
+
+
         }
     }
 }

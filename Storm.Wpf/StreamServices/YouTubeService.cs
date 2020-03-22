@@ -12,7 +12,8 @@ namespace Storm.Wpf.StreamServices
 {
     public class YouTubeService : StreamServiceBase
     {
-        private const string isLiveMarker = "yt-badge-live";
+        //private const string isLiveMarker = "yt-badge-live";
+        private const string isLiveMarker = "title=\"\"";
         private const string displayNameStartMarker = "<meta property=\"og:title\" content=\"";
         private const string displayNameEndMarker = "\">";
 

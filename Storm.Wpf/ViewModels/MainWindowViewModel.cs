@@ -218,6 +218,7 @@ namespace Storm.Wpf.ViewModels
 
             var services = streams
                 .Select(stream => ServicesManager.GetService(stream.GetType()))
+                .Where(service => service != null)
                 .Distinct()
                 .ToList();
 

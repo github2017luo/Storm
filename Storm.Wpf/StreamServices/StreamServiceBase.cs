@@ -18,7 +18,7 @@ namespace Storm.Wpf.StreamServices
 
         public abstract Task UpdateAsync(IEnumerable<StreamBase> streams);
 
-        public Action GetWatchingInstructions(StreamBase stream)
+        public virtual Action GetWatchingInstructions(StreamBase stream)
         {
             if (stream is null)
             {
